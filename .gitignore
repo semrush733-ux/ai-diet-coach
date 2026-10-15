@@ -1,0 +1,12 @@
+.env
+*.log
+node_modules/
+vendor/
+.next/
+build/
+.dart_tool/
+.flutter-plugins*
+backend/storage/framework/**
+!backend/storage/framework/**/.gitkeep
+backend/storage/logs/*
+!backend/storage/logs/.gitkeep

@@ -1,0 +1,52 @@
+name: ai_diet_coach
+description: "AI Diet Coach — Eat Smart. Live Better. Personalized AI nutrition companion."
+publish_to: "none"
+version: 0.1.0+1
+
+environment:
+  sdk: ">=3.4.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # State & architecture
+  flutter_riverpod: ^2.5.1
+  go_router: ^14.2.0
+
+  # Networking & data
+  dio: ^5.4.3
+  json_annotation: ^4.9.0
+
+  # Storage
+  flutter_secure_storage: ^9.2.2
+  shared_preferences: ^2.2.3
+
+  # UI & intl
+  google_fonts: ^6.2.1
+  intl: any # resolved by flutter_localizations pin
+  cached_network_image: ^3.3.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  build_runner: ^2.4.9
+  json_serializable: ^6.8.0
+  flutter_launcher_icons: ^0.13.1
+
+# Launcher icon generated from the brand logo (bg removed) in assets/images.
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: assets/images/app_icon_1024.png
+  adaptive_icon_background: "#F7FAF9"
+  adaptive_icon_foreground: assets/images/app_icon_1024.png
+
+flutter:
+  uses-material-design: true
+  generate: true
+  assets:
+    - assets/images/
