@@ -5,6 +5,9 @@ on:
     branches: [main, master]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build-apk:
     runs-on: ubuntu-latest
@@ -64,3 +67,13 @@ jobs:
           name: ai-diet-coach-apks
           path: mobile/build/app/outputs/flutter-apk/ai-diet-coach-*.apk
           retention-days: 30
+
+      - name: Publish APKs as GitHub release
+        working-directory: ${{ github.workspace }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="build-${{ github.run_number }}"
+          gh release create "$TAG" mobile/build/app/outputs/flutter-apk/ai-diet-coach-*.apk \
+            --title "AI Diet Coach APK ($TAG)" \
+            --notes "Automated APK build. demo = runs standalone (dev fakes); api = connects to API_BASE_URL."
