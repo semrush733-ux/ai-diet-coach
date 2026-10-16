@@ -100,8 +100,13 @@ class AuthController extends Notifier<AuthState> {
     }
   }
 
-  /// Called by onboarding when the server confirms completion.
+  /// Called by onboarding when completion is confirmed (server or local).
   void markOnboarded() {
+    final repo = _repo;
+    if (repo is DevFakeAuthRepository) {
+      // Persist so the session survives app restarts in standalone mode.
+      repo.markOnboarded();
+    }
     final user = state.user?.copyWith(onboarded: true);
     state = AuthState(status: AuthStatus.signedIn, user: user);
   }

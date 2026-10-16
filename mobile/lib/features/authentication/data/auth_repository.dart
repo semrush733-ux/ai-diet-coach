@@ -3,13 +3,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/env.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_exception.dart';
+import '../../../core/storage/local_store.dart';
 import '../../../core/storage/token_storage.dart';
 import '../domain/auth_user.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   if (Env.useFakeApi) {
-    // DEV-ONLY in-memory fake, selected via --dart-define=USE_FAKE_API=true.
-    return DevFakeAuthRepository(ref.watch(tokenStorageProvider));
+    // Standalone mode (selected via --dart-define=USE_FAKE_API=true):
+    // accounts live on this device only.
+    return DevFakeAuthRepository(
+        ref.watch(tokenStorageProvider), ref.watch(localStoreProvider));
   }
   return ApiAuthRepository(
     ref.watch(apiClientProvider),
@@ -112,20 +115,54 @@ class ApiAuthRepository implements AuthRepository {
 }
 
 /// ─────────────────────────────────────────────────────────────────────
-/// DEV FAKE — clearly labeled development adapter.
-/// Lets the app run end-to-end without a backend. Data lives in memory
-/// for the app session only; nothing here is a real user record.
-/// Never ship with USE_FAKE_API=true.
+/// Standalone-mode auth — clearly labeled development adapter.
+/// Lets the app run end-to-end without a backend. Accounts and the session
+/// are stored on this device only (SharedPreferences). Not a server record.
 /// ─────────────────────────────────────────────────────────────────────
 class DevFakeAuthRepository implements AuthRepository {
-  DevFakeAuthRepository(this._tokens);
+  DevFakeAuthRepository(this._tokens, this._store);
 
   final TokenStorage _tokens;
-  final Map<String, ({String name, String password})> _accounts = {};
-  AuthUser? _current;
+  final LocalStore _store;
+
+  Future<Map<String, dynamic>> _accounts() async =>
+      await _store.readJson(StoreKeys.devAccounts) ?? <String, dynamic>{};
+
+  AuthUser _userFromSession(Map<String, dynamic> json) => AuthUser(
+        id: (json['id'] as num?)?.toInt() ?? 1,
+        email: '${json['email'] ?? ''}',
+        displayName: '${json['name'] ?? ''}',
+        emailVerified: true,
+        onboarded: json['onboarded'] == true,
+      );
+
+  Future<AuthUser> _saveSession({
+    required int id,
+    required String email,
+    required String name,
+    required bool onboarded,
+  }) async {
+    await _store.writeJson(StoreKeys.devSession, {
+      'id': id,
+      'email': email,
+      'name': name,
+      'onboarded': onboarded,
+    });
+    await _tokens.write('dev-local-token');
+    return AuthUser(
+      id: id,
+      email: email,
+      displayName: name,
+      emailVerified: true,
+      onboarded: onboarded,
+    );
+  }
 
   @override
-  Future<AuthUser?> restoreSession() async => _current;
+  Future<AuthUser?> restoreSession() async {
+    final session = await _store.readJson(StoreKeys.devSession);
+    return session == null ? null : _userFromSession(session);
+  }
 
   @override
   Future<AuthUser> register({
@@ -133,60 +170,70 @@ class DevFakeAuthRepository implements AuthRepository {
     required String email,
     required String password,
   }) async {
-    await Future<void>.delayed(const Duration(milliseconds: 500));
-    if (_accounts.containsKey(email)) {
+    await Future<void>.delayed(const Duration(milliseconds: 400));
+    final accounts = await _accounts();
+    if (accounts.containsKey(email)) {
       throw const ApiException(
         code: 'validation_error',
-        message: 'That email is already registered.',
+        message: 'That email is already registered on this device.',
         statusCode: 422,
         fieldErrors: {
-          'email': ['That email is already registered.']
+          'email': ['That email is already registered on this device.']
         },
       );
     }
-    _accounts[email] = (name: name, password: password);
-    await _tokens.write('dev-fake-token');
-    _current = AuthUser(
-      id: _accounts.length,
-      email: email,
-      displayName: name,
-      emailVerified: true, // dev convenience, labeled
-      onboarded: false,
-    );
-    return _current!;
+    accounts[email] = {'name': name, 'password': password, 'onboarded': false};
+    await _store.writeJson(StoreKeys.devAccounts, accounts);
+    return _saveSession(
+        id: accounts.length, email: email, name: name, onboarded: false);
   }
 
   @override
   Future<AuthUser> login(
       {required String email, required String password}) async {
-    await Future<void>.delayed(const Duration(milliseconds: 500));
-    final account = _accounts[email];
-    if (account == null || account.password != password) {
+    await Future<void>.delayed(const Duration(milliseconds: 400));
+    final accounts = await _accounts();
+    final account = accounts[email];
+    if (account is! Map || '${account['password']}' != password) {
       throw const ApiException(
         code: 'invalid_credentials',
         message: 'Email or password is incorrect.',
         statusCode: 401,
       );
     }
-    await _tokens.write('dev-fake-token');
-    _current = AuthUser(
+    return _saveSession(
       id: 1,
       email: email,
-      displayName: account.name,
-      emailVerified: true,
-      onboarded: false,
+      name: '${account['name'] ?? ''}',
+      onboarded: account['onboarded'] == true,
     );
-    return _current!;
+  }
+
+  /// Persists the onboarded flag for the active session + account.
+  Future<void> markOnboarded() async {
+    final session = await _store.readJson(StoreKeys.devSession);
+    if (session != null) {
+      session['onboarded'] = true;
+      await _store.writeJson(StoreKeys.devSession, session);
+      final accounts = await _accounts();
+      final email = '${session['email']}';
+      final account = accounts[email];
+      if (account is Map) {
+        account['onboarded'] = true;
+        accounts[email] = account;
+        await _store.writeJson(StoreKeys.devAccounts, accounts);
+      }
+    }
   }
 
   @override
   Future<void> forgotPassword(String email) async {
-    await Future<void>.delayed(const Duration(milliseconds: 400));
+    await Future<void>.delayed(const Duration(milliseconds: 300));
   }
 
   @override
   Future<void> logout() async {
-    _current = null;
+    await _store.remove(StoreKeys.devSession);
     await _tokens.clear();
   }
 }

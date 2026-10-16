@@ -1,6 +1,15 @@
 # Implementation Status — honest ledger
 
-Updated: Phase 1 delivery.
+Updated: Phase 1 delivery + standalone core features round.
+
+## New in the standalone-features round (mobile, no backend required)
+- On-device rules-based meal plan generator (7-day): allergy exclusion (never relaxed), dietary prefs (halal/veg/vegan/dairy-free/gluten-free), country + budget with safe relaxation, carb-conscious ranking for diabetes-support goals, portion scaling toward a non-clinical energy heuristic.
+- In-app food/meal-template catalog (PK/UK/US, dev-grade USDA-style per-100 g values — re-verify before production).
+- My Diet tab: 7-day selector, day totals, meal list; Meal detail: ingredients with grams, nutrition, serving-size adjust, mark eaten/skip; Replace This Meal with kcal/carb deltas.
+- Sugar tab: glucose add/history/delete (mg/dL + mmol/L, original kept, 18.016 conversion), 7-day daily-average trend bars, HbA1c entries.
+- Progress tab: meals-completed adherence, 7-day glucose average, water glasses tracker, weight log.
+- Local persistence (SharedPreferences JSON) for profile, plan, session, tracking — survives app restarts. Standalone auth sessions persist on-device.
+These run in the standalone (USE_FAKE_API) build; server-backed equivalents remain Phase 2/3 work.
 
 ## Implemented in this repository (code exists, compiles by design, not yet device/CI-verified)
 

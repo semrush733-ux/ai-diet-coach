@@ -2,13 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/utils/l10n_ext.dart';
 import '../../features/authentication/application/auth_controller.dart';
 import '../../features/authentication/presentation/auth_form_screens.dart';
 import '../../features/authentication/presentation/splash_screen.dart';
 import '../../features/authentication/presentation/welcome_screen.dart';
+import '../../features/diet_planner/presentation/diet_screen.dart';
+import '../../features/diet_planner/presentation/meal_detail_screen.dart';
+import '../../features/glucose/presentation/sugar_screen.dart';
 import '../../features/home/presentation/home_screen.dart';
 import '../../features/onboarding/presentation/onboarding_wizard.dart';
+import '../../features/progress/presentation/progress_screen.dart';
 import '../shell/main_shell.dart';
 import 'routes.dart';
 
@@ -82,28 +85,29 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(routes: [
             GoRoute(
               path: AppRoutes.diet,
-              builder: (context, _) => ComingSoonTab(
-                icon: Icons.restaurant_menu_rounded,
-                message: context.l10n.dietTabPlaceholder,
-              ),
+              builder: (_, __) => const DietScreen(),
+              routes: [
+                GoRoute(
+                  path: 'meal/:id',
+                  builder: (context, state) => MealDetailScreen(
+                    mealId: int.tryParse(
+                            state.pathParameters['id'] ?? '') ??
+                        0,
+                  ),
+                ),
+              ],
             ),
           ]),
           StatefulShellBranch(routes: [
             GoRoute(
               path: AppRoutes.sugar,
-              builder: (context, _) => ComingSoonTab(
-                icon: Icons.water_drop_rounded,
-                message: context.l10n.sugarTabPlaceholder,
-              ),
+              builder: (_, __) => const SugarScreen(),
             ),
           ]),
           StatefulShellBranch(routes: [
             GoRoute(
               path: AppRoutes.progress,
-              builder: (context, _) => ComingSoonTab(
-                icon: Icons.insights_rounded,
-                message: context.l10n.progressTabPlaceholder,
-              ),
+              builder: (_, __) => const ProgressScreen(),
             ),
           ]),
         ],

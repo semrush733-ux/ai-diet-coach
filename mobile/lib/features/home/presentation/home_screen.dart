@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../app/theme/tokens.dart';
@@ -36,10 +37,14 @@ class HomeScreen extends ConsumerWidget {
                     ref.read(todayPlanProvider.notifier).refresh(),
               ),
               data: (plan) => plan == null || plan.meals.isEmpty
-                  ? _NoPlanCard(onCreate: () {
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                          content:
-                              Text(context.l10n.planGenerationPending)));
+                  ? _NoPlanCard(onCreate: () async {
+                      final error = await ref
+                          .read(todayPlanProvider.notifier)
+                          .generateNow();
+                      if (error != null && context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(error)));
+                      }
                     })
                   : _PlanContent(plan: plan),
             ),
@@ -256,14 +261,17 @@ class _NextMealCard extends StatelessWidget {
                   children: [
                     Expanded(
                       child: AppPrimaryButton(
-                          label: l10n.viewMeal, onPressed: () {}),
+                          label: l10n.viewMeal,
+                          onPressed: () =>
+                              context.go('/diet/meal/${meal.id}')),
                     ),
                     const SizedBox(width: AppSpacing.md),
                     Expanded(
                       child: AppSecondaryButton(
                           label: l10n.replaceMeal,
                           icon: Icons.swap_horiz_rounded,
-                          onPressed: () {}),
+                          onPressed: () =>
+                              context.go('/diet/meal/${meal.id}')),
                     ),
                   ],
                 ),
@@ -324,6 +332,7 @@ class _TimelineTile extends StatelessWidget {
       child: AppCard(
         padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.lg, vertical: AppSpacing.md),
+        onTap: () => context.go('/diet/meal/${meal.id}'),
         child: Row(
           children: [
             Icon(

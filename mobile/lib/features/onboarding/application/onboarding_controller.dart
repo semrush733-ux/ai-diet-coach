@@ -5,6 +5,8 @@ import '../../../core/env.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_exception.dart';
 import '../../authentication/application/auth_controller.dart';
+import '../../diet_planner/data/local_plan_repository.dart';
+import '../../diet_planner/domain/local_plan.dart';
 
 enum UnitSystem { metric, imperial }
 
@@ -144,11 +146,38 @@ class OnboardingController extends Notifier<OnboardingDraft> {
     state = write(state, set);
   }
 
+  String _fmtTime(TimeOfDay t) =>
+      '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+
   /// Submits the completed wizard. Returns error message or null on success.
   Future<String?> submit() async {
     if (Env.useFakeApi) {
-      // DEV FAKE path: pretend the backend accepted the profile.
-      await Future<void>.delayed(const Duration(milliseconds: 600));
+      // Standalone mode: persist the profile on-device and generate the
+      // first 7-day plan immediately.
+      final draft = state;
+      final repo = ref.read(localPlanRepositoryProvider);
+      await repo.saveProfile(StoredProfile(
+        displayName: draft.displayName,
+        age: draft.age,
+        heightCm: draft.heightCm,
+        weightKg: draft.weightKg,
+        countryCode: draft.countryCode,
+        goals: draft.goals.toList(),
+        dietaryPreferences: draft.dietaryPreferences.toList(),
+        allergies: draft.allergies.toList(),
+        breakfastTime: _fmtTime(draft.breakfastTime),
+        lunchTime: _fmtTime(draft.lunchTime),
+        dinnerTime: _fmtTime(draft.dinnerTime),
+        wantsSnacks: draft.wantsSnacks,
+        budgetTier: draft.budgetTier == BudgetTier.budget
+            ? 1
+            : draft.budgetTier == BudgetTier.premium
+                ? 3
+                : 2,
+        glucoseUnit: draft.glucoseUnit,
+      ));
+      final error = await repo.generate();
+      if (error != null) return error;
       ref.read(authControllerProvider.notifier).markOnboarded();
       return null;
     }
